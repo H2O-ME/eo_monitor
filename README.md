@@ -78,6 +78,36 @@
 
 ## 🛠️ 技术栈
 
-- **后端**：Node.js, Express, Tencent Cloud SDK
-- **前端**：HTML5, Tailwind CSS, ECharts
-- **部署**：Tencent Cloud EdgeOne Pages
+- **框架**：Next.js (App Router)
+- **前端**：React, Tailwind CSS, ECharts, Lucide React
+- **后端**：Next.js API Routes, Tencent Cloud SDK
+- **部署**：Tencent Cloud EdgeOne Pages / Vercel / Docker
+
+## 🚀 快速部署
+
+### 本地运行
+
+1. 克隆仓库：
+   ```bash
+   git clone https://github.com/afoim/eo_monitior
+   cd eo_monitior
+   ```
+
+2. 安装依赖：
+   ```bash
+   pnpm install
+   ```
+
+3. 配置密钥：
+   创建 `.env.local` 文件：
+   ```text
+   TENCENTCLOUD_SECRET_ID=您的SecretId
+   TENCENTCLOUD_SECRET_KEY=您的SecretKey
+   ```
+
+4. 启动开发服务器：
+   ```bash
+   npm run dev
+   ```
+
+5. 访问 `http://localhost:3000`。
