@@ -47,7 +47,7 @@ import {
 } from '../lib/utils';
 
 // Edge Runtime for EdgeOne Pages
-export const runtime = 'edge';
+// export const runtime = 'edge';
 
 export default function Dashboard() {
   // State for controls
@@ -63,14 +63,18 @@ export default function Dashboard() {
 
   // Initialize dark mode from system preference or localStorage
   useEffect(() => {
-    setMounted(true);
-    const savedTheme = localStorage.getItem('theme');
-    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
-      setIsDark(true);
-      document.documentElement.classList.add('dark');
+    try {
+      const savedTheme = localStorage.getItem('theme');
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+        setIsDark(true);
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {
+      console.error('Theme initialization failed:', e);
     }
+    setMounted(true);
   }, []);
 
   const toggleDarkMode = () => {

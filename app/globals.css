@@ -31,14 +31,16 @@
     @apply border-border;
   }
   body {
+    background-color: #f8fafc; /* Fallback for older browsers */
+    color: #0f172a; /* Fallback for older browsers */
     @apply bg-slate-50 text-foreground;
   }
 }
 
 @keyframes skeleton-loading {
-  0% { background-color: var(--color-muted); }
-  50% { background-color: color-mix(in srgb, var(--color-muted), transparent 50%); }
-  100% { background-color: var(--color-muted); }
+  0% { background-color: #f1f5f9; }
+  50% { background-color: #e2e8f0; }
+  100% { background-color: #f1f5f9; }
 }
 
 .skeleton {

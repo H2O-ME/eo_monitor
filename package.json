@@ -23,5 +23,11 @@
     "tailwindcss": "^4.1.18",
     "tencentcloud-sdk-nodejs-common": "^4.1.122",
     "tencentcloud-sdk-nodejs-teo": "^4.1.154"
-  }
+  },
+  "browserslist": [
+    ">0.3%",
+    "not dead",
+    "not op_mini all",
+    "chrome >= 80"
+  ]
 }
