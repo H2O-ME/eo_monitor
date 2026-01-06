@@ -25,6 +25,10 @@
   - 支持自定义时间段（近1小时 - 近31天）。
   - 支持切换数据粒度（分钟/小时/天/自动）。
 - **个性化配置**：支持自定义站点名称。
+- **视觉体验优化**：
+  - **动画增强**：新增组件入场渐入动画，交互更流畅。
+  - **界面精简**：移除冗余的 "Live" 标签，保持视觉简洁。
+  - **排行榜优化**：自动截断过长的热门 URL 等标签，避免布局错位。
 
 ## 🚀 快速部署
 
@@ -44,8 +48,8 @@
 
 1. 克隆仓库：
    ```bash
-   git clone https://github.com/afoim/eo_monitior
-   cd eo_monitior
+   git clone https://github.com/afoim/eo_monitor
+   cd eo_monitor
    ```
 
 2. 安装依赖：
@@ -89,8 +93,8 @@
 
 1. 克隆仓库：
    ```bash
-   git clone https://github.com/afoim/eo_monitior
-   cd eo_monitior
+   git clone https://github.com/afoim/eo_monitor
+   cd eo_monitor
    ```
 
 2. 安装依赖：

@@ -18,8 +18,6 @@ export default function ChartContainer({ title, children, height = "350px", load
           </div>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <span className="text-[8px] sm:text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">Live</span>
         </div>
       </div>
       <div className="relative p-3 sm:p-6">

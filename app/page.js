@@ -23,7 +23,10 @@ import {
   Layers,
   Lock,
   Moon,
-  Sun
+  Sun,
+  FileText,
+  Layout,
+  Cloud
 } from 'lucide-react';
 
 import KPICard from '../components/KPICard';
@@ -138,7 +141,6 @@ export default function Dashboard() {
       { type: 'Timing', metric: 'l7Flow_inFlux', ...range, interval },
       { type: 'Timing', metric: 'l7Flow_outFlux', ...range, interval },
       { type: 'Timing', metric: 'l7Flow_request', ...range, interval },
-      { type: 'Timing', metric: 'l7Flow_cacheHitRate', ...range, interval },
       // Bandwidth
       { type: 'Timing', metric: 'l7Flow_bandwidth', ...range, interval },
       { type: 'Timing', metric: 'l7Flow_inBandwidth', ...range, interval },
@@ -151,14 +153,6 @@ export default function Dashboard() {
       { type: 'Timing', metric: 'l7Flow_inFlux_hy', ...range, interval },
       { type: 'Timing', metric: 'l7Flow_outBandwidth_hy', ...range, interval },
       { type: 'Timing', metric: 'l7Flow_inBandwidth_hy', ...range, interval },
-      { type: 'Timing', metric: 'l7Flow_request_hy', ...range, interval },
-      // Security
-      { type: 'Security', metric: 'ccAcl_interceptNum', ...range, interval },
-      { type: 'Security', metric: 'ccManage_interceptNum', ...range, interval },
-      { type: 'Security', metric: 'ccRate_interceptNum', ...range, interval },
-      // Edge Functions
-      { type: 'Timing', metric: 'function_requestCount', ...range, interval },
-      { type: 'Timing', metric: 'function_cpuCostTime', ...range, interval },
       // Top Analysis
       { type: 'Top', metric: 'l7Flow_outFlux_domain', ...range, interval },
       { type: 'Top', metric: 'l7Flow_request_domain', ...range, interval },
@@ -167,6 +161,11 @@ export default function Dashboard() {
       { type: 'Top', metric: 'l7Flow_outFlux_statusCode', ...range, interval },
       { type: 'Top', metric: 'l7Flow_outFlux_url', ...range, interval },
       { type: 'Top', metric: 'l7Flow_outFlux_resourceType', ...range, interval },
+      { type: 'Top', metric: 'l7Flow_outFlux_sip', ...range, interval },
+      { type: 'Top', metric: 'l7Flow_outFlux_referers', ...range, interval },
+      { type: 'Top', metric: 'l7Flow_outFlux_ua_browser', ...range, interval },
+      { type: 'Top', metric: 'l7Flow_outFlux_ua_os', ...range, interval },
+      { type: 'Top', metric: 'l7Flow_outFlux_ua_device', ...range, interval },
     ];
 
     try {
@@ -208,34 +207,35 @@ export default function Dashboard() {
     const maxValue = Math.max(...metrics.flatMap(m => data[m]?.valueData || [0]));
     const { unit, divisor } = getBestUnit(maxValue, unitType);
     const textColor = isDark ? '#94a3b8' : '#64748b';
-    const splitLineColor = isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9';
-    const tooltipBg = isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.95)';
-    const tooltipBorder = isDark ? '#334155' : '#e2e8f0';
-    const tooltipText = isDark ? '#f1f5f9' : '#1e293b';
+    const splitLineColor = isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)';
+    const tooltipText = isDark ? '#f8fafc' : '#0f172a';
 
     return {
       backgroundColor: 'transparent',
+      animationDuration: 1200,
+      animationEasing: 'cubicOut',
       tooltip: {
         trigger: 'axis',
-        backgroundColor: tooltipBg,
-        borderColor: tooltipBorder,
+        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.85)',
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
         borderWidth: 1,
-        textStyle: { color: tooltipText, fontSize: 12 },
-        padding: [10, 14],
-        extraCssText: 'box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border-radius: 8px;',
+        textStyle: { color: isDark ? '#e2e8f0' : '#334155', fontSize: 12, fontFamily: 'Inter, sans-serif' },
+        padding: [12, 16],
+        borderRadius: 12,
+        extraCssText: 'box-shadow: 0 8px 20px -4px rgb(0 0 0 / 0.15); backdrop-filter: blur(12px);',
         formatter: (params) => {
-          let html = `<div style="font-weight: 700; margin-bottom: 8px; color: ${isDark ? '#64748b' : '#64748b'}; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">${params[0].name}</div>`;
+          let html = `<div style="font-weight: 600; font-size: 12px; margin-bottom: 10px; color: ${isDark ? '#94a3b8' : '#64748b'}; letter-spacing: 0.02em;">${params[0].name}</div>`;
           params.forEach(p => {
             const val = p.value;
-            const formatted = unitType === 'bandwidth' ? formatBps(val) : 
+            const formatted = unitType === 'bw' || unitType === 'bps' || unitType === 'bandwidth' ? formatBps(val) : 
                              unitType === 'count' ? formatCount(val) : 
                              unitType === 'ms' ? `${val.toFixed(2)} ms` : formatBytes(val);
-            html += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 4px;">
+            html += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 6px;">
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${p.color}"></span>
-                <span style="color: ${isDark ? '#94a3b8' : '#475569'};">${p.seriesName}</span>
+                <span style="width: 8px; height: 8px; border-radius: 2px; background-color: ${p.color}; box-shadow: 0 0 6px ${p.color}60;"></span>
+                <span style="color: ${isDark ? '#cbd5e1' : '#475569'}; font-size: 12px; font-weight: 500;">${p.seriesName}</span>
               </div>
-              <span style="font-weight: 600; color: ${tooltipText};">${formatted}</span>
+              <span style="font-family: inherit; font-weight: 700; font-feature-settings: 'tnum'; color: ${tooltipText}; font-size: 13px;">${formatted}</span>
             </div>`;
           });
           return html;
@@ -243,53 +243,84 @@ export default function Dashboard() {
       },
       legend: {
         show: true,
-        icon: 'circle',
-        itemWidth: 8,
-        itemHeight: 8,
-        textStyle: { color: textColor, fontSize: 12 },
+        icon: 'rect',
+        itemWidth: 10,
+        itemHeight: 3,
+        itemGap: 16,
+        textStyle: { color: textColor, fontSize: 11, fontWeight: 500 },
         bottom: 0,
-        left: 'center'
+        left: 'center',
+        padding: [16, 0, 0, 0]
       },
-      grid: { left: '2%', right: '2%', bottom: '12%', top: '10%', containLabel: true },
+      grid: { left: '4px', right: '16px', bottom: '14%', top: '6%', containLabel: true },
       xAxis: {
         type: 'category',
         boundaryGap: false,
         data: data.timeData,
-        axisLine: { lineStyle: { color: splitLineColor } },
-        axisLabel: { color: textColor, fontSize: 11, margin: 12 },
-        axisTick: { show: false }
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { 
+            color: textColor, 
+            fontSize: 10, 
+            margin: 16,
+            fontWeight: 500,
+            interval: 'auto',
+            showMaxLabel: true,
+            showMinLabel: true 
+        }
       },
       yAxis: {
         type: 'value',
-        splitLine: { lineStyle: { color: splitLineColor, type: 'dashed' } },
+        splitLine: { 
+            show: true, 
+            lineStyle: { color: splitLineColor, type: 'dashed', width: 1 } 
+        },
+        axisLine: { show: false },
+        axisTick: { show: false },
         axisLabel: {
           color: textColor,
-          fontSize: 11,
-          formatter: (v) => `${(v / divisor).toFixed(1)} ${unit}`
+          fontSize: 10,
+          fontWeight: 500,
+          margin: 12,
+          formatter: (v) => {
+            if (v === 0) return '0';
+            const { unit, divisor } = getBestUnit(v, unitType === 'ms' ? 'bytes' : unitType); 
+            // Reuse getBestUnit logic but adjust for count
+            if (unitType === 'count') {
+                if (v >= 1000000) return (v/1000000).toFixed(1) + 'M';
+                if (v >= 1000) return (v/1000).toFixed(1) + 'K';
+                return v;
+            }
+            return (v / divisor).toFixed(0) + unit;
+          }
         }
       },
-      series: metrics.map(m => ({
-        name: metricLabels[m] || m,
-        type: 'line',
-        smooth: 0.4,
-        showSymbol: false,
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: `${metricColors[m]}20` },
-              { offset: 1, color: `${metricColors[m]}00` }
-            ]
-          }
-        },
-        lineStyle: { width: 3, color: metricColors[m] },
-        itemStyle: { color: metricColors[m] },
-        emphasis: {
-          lineStyle: { width: 4, shadowBlur: 10, shadowColor: `${metricColors[m]}40` }
-        },
-        data: data[m]?.valueData || []
-      }))
+      series: metrics.map(m => {
+        const baseColor = metricColors[m] || '#3b82f6';
+        return {
+          name: metricLabels[m] || m,
+          type: 'line',
+          smooth: 0.4,
+          showSymbol: false,
+          symbol: 'circle',
+          symbolSize: 8,
+          itemStyle: { color: baseColor, borderColor: isDark ? '#0f172a' : '#ffffff', borderWidth: 2 },
+          lineStyle: { width: 2, color: baseColor, shadowBlur: 4, shadowColor: `${baseColor}40`, shadowOffsetY: 2 },
+          areaStyle: {
+            opacity: 0.15,
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: baseColor },
+              { offset: 1, color: 'transparent' }
+            ])
+          },
+          emphasis: {
+            scale: true,
+            lineStyle: { width: 3 },
+            itemStyle: { borderWidth: 2, shadowBlur: 10, shadowColor: baseColor }
+          },
+          data: data[m]?.valueData || []
+        };
+      })
     };
   };
 
@@ -311,21 +342,21 @@ export default function Dashboard() {
         trigger: 'axis',
         backgroundColor: tooltipBg,
         borderColor: tooltipBorder,
-        borderWidth: 1,
-        padding: [10, 14],
-        extraCssText: 'box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border-radius: 8px;',
+        borderWidth: 0,
+        padding: [12, 16],
+        extraCssText: 'box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); border-radius: 12px; backdrop-filter: blur(10px);',
         formatter: (params) => {
           const p = params[0];
           const val = p.value;
           const formatted = isCount ? formatCount(val) : formatBytes(val);
-          return `<div style="font-weight: 700; margin-bottom: 4px; color: ${tooltipText}">${p.name}</div>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${p.color}"></span>
-                    <span style="color: ${isDark ? '#94a3b8' : '#475569'}; font-weight: 600;">${formatted}</span>
+          return `<div style="font-weight: 600; font-size: 13px; margin-bottom: 6px; color: ${tooltipText}">${p.name}</div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+                    <span style="font-size: 12px; color: ${isDark ? '#94a3b8' : '#64748b'}">数值</span>
+                    <span style="font-family: monospace; font-weight: 700; color: ${p.color?.colorStops ? p.color.colorStops[0].color : p.color}">${formatted}</span>
                   </div>`;
         }
       },
-      grid: { left: '2%', right: '8%', bottom: '2%', top: '2%', containLabel: true },
+      grid: { left: '0%', right: '12%', bottom: '2%', top: '2%', containLabel: true },
       xAxis: {
         type: 'value',
         splitLine: { show: false },
@@ -337,7 +368,15 @@ export default function Dashboard() {
         type: 'category',
         axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: isDark ? '#cbd5e1' : '#475569', fontSize: 12, margin: 12 },
+        axisLabel: { 
+          color: isDark ? '#cbd5e1' : '#475569', 
+          fontSize: 12,
+          fontWeight: 500,
+          margin: 16,
+          width: 110,
+          overflow: 'truncate',
+          ellipsis: '...'
+        },
         data: items.map(i => {
           if (metricName.includes('province')) return provinceMap[i.Key] || i.Key;
           if (metricName.includes('country')) return countryMap[i.Key] || i.Key;
@@ -347,20 +386,25 @@ export default function Dashboard() {
       series: [{
         type: 'bar',
         barWidth: '40%',
+        showBackground: true,
+        backgroundStyle: {
+          color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+          borderRadius: [0, 6, 6, 0]
+        },
         data: items.map(i => i.Value).reverse(),
         itemStyle: {
           color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
             { offset: 0, color: metricColors[metricName] || '#3b82f6' },
-            { offset: 1, color: `${metricColors[metricName]}40` || '#3b82f640' }
+            { offset: 1, color: `${metricColors[metricName]}80` || '#3b82f680' }
           ]),
-          borderRadius: [0, 20, 20, 0]
+          borderRadius: [0, 6, 6, 0]
         },
         label: {
           show: true,
           position: 'right',
           color: textColor,
           fontSize: 11,
-          fontWeight: 500,
+          fontWeight: 600,
           formatter: (p) => isCount ? formatCount(p.value) : formatBytes(p.value)
         }
       }]
@@ -370,70 +414,71 @@ export default function Dashboard() {
   if (!mounted) return null;
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-slate-950' : 'bg-[#f8fafc]'} pb-12 transition-colors duration-300`}>
-      {/* Header - Removed sticky for better mobile/watch experience */}
-      <header className="relative z-30 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg sm:rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none">
-              <Activity size={18} className="sm:hidden" />
-              <Activity size={22} className="hidden sm:block" />
+    <div className={`min-h-screen ${isDark ? 'bg-[#0a0c10]' : 'bg-[#f4f7fa]'} transition-colors duration-500`}>
+      {/* Refactored Header */}
+      <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/70 dark:bg-slate-950/70 border-b border-slate-200/50 dark:border-slate-800/50 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20">
+              <Activity size={24} />
             </div>
-            <div className="min-w-0">
-              <h1 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">EdgeOne Monitor</h1>
-              <div className="flex items-center gap-1.5">
-                <span className="flex h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <p className="text-[8px] sm:text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">系统运行正常</p>
+            <div>
+              <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">
+                EdgeOne <span className="text-blue-600 dark:text-blue-400">Monitor</span>
+              </h1>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Live Monitoring</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-3">
-            {/* Dark Mode Toggle */}
-            <button 
-              onClick={toggleDarkMode}
-              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-              aria-label="切换深色模式"
-            >
-              {isDark ? <Sun size={16} className="sm:hidden" /> : <Moon size={16} className="sm:hidden" />}
-              {isDark ? <Sun size={18} className="hidden sm:block" /> : <Moon size={18} className="hidden sm:block" />}
-            </button>
-
-            {/* Zone Selector - Hidden on very small screens, shown as icon on mobile */}
-            <div className="hidden sm:flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-              <Globe size={14} className="text-slate-500 dark:text-slate-400" />
+          <div className="flex items-center gap-3">
+            {/* Zone Selector */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg border border-slate-200/30 dark:border-slate-700/30">
+              <Globe size={14} className="text-slate-400" />
               <select 
-                className="bg-transparent border-none text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-0 p-0 pr-4 sm:pr-6 cursor-pointer"
+                className="bg-transparent border-none text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-0 p-0 pr-6 cursor-pointer"
                 value={zoneId}
                 onChange={(e) => setZoneId(e.target.value)}
               >
-                <option value="*">所有站点</option>
+                <option value="*">所有站点资源</option>
                 {zones.map(z => (
                   <option key={z.ZoneId} value={z.ZoneId}>{z.ZoneName}</option>
                 ))}
               </select>
             </div>
 
-            <button 
-              onClick={() => fetchData(true)}
-              disabled={loading}
-              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-50"
-            >
-              <RefreshCw className={`${loading ? 'animate-spin' : ''}`} size={16} className="sm:hidden" />
-              <RefreshCw className={`${loading ? 'animate-spin' : ''}`} size={18} className="hidden sm:block" />
-            </button>
+            <div className="flex items-center gap-2 p-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl border border-slate-200/30 dark:border-slate-700/30">
+              <button 
+                onClick={toggleDarkMode}
+                className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200"
+              >
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              
+              <div className="w-px h-4 bg-slate-300/30 dark:bg-slate-600/30"></div>
+
+              <button 
+                onClick={() => fetchData(true)}
+                disabled={loading}
+                className={`p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 ${loading ? 'animate-spin' : ''}`}
+              >
+                <RefreshCw size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8">
-        {/* Controls Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex-1 flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-slate-50 dark:bg-slate-800 rounded-lg sm:rounded-xl border border-slate-100 dark:border-slate-700">
-              <Clock size={14} className="text-slate-400 dark:text-slate-500" />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        {/* Optimized Filter Bar */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+          <div className="lg:col-span-4 flex items-center gap-3 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200/50 dark:border-slate-800 shadow-sm">
+            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+              <Clock size={16} className="text-blue-500" />
               <select 
-                className="bg-transparent border-none text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 focus:ring-0 p-0 pr-6 sm:pr-8 cursor-pointer w-full"
+                className="bg-transparent border-none text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-0 p-0 pr-8 cursor-pointer w-full"
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
               >
@@ -441,19 +486,16 @@ export default function Dashboard() {
                 <option value="1h">最近 1 小时</option>
                 <option value="6h">最近 6 小时</option>
                 <option value="24h">最近 24 小时</option>
-                <option value="today">今天</option>
-                <option value="yesterday">昨天</option>
+                <option value="today">今日数据</option>
+                <option value="yesterday">昨日回顾</option>
                 <option value="3d">最近 3 天</option>
                 <option value="7d">最近 7 天</option>
-                <option value="14d">最近 14 天</option>
-                <option value="31d">最近 31 天</option>
               </select>
             </div>
-
-            <div className="flex-1 flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-slate-50 dark:bg-slate-800 rounded-lg sm:rounded-xl border border-slate-100 dark:border-slate-700">
-              <Filter size={14} className="text-slate-400 dark:text-slate-500" />
+            <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+              <Filter size={16} className="text-indigo-500" />
               <select 
-                className="bg-transparent border-none text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 focus:ring-0 p-0 pr-6 sm:pr-8 cursor-pointer w-full"
+                className="bg-transparent border-none text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-0 p-0 pr-8 cursor-pointer w-full"
                 value={interval}
                 onChange={(e) => setInterval(e.target.value)}
               >
@@ -466,30 +508,33 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="flex items-center justify-around sm:justify-end gap-3 sm:gap-6 px-3 sm:px-4 py-2 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg sm:rounded-xl border border-blue-100/50 dark:border-blue-800/50">
-            <div className="flex flex-col items-center sm:items-start">
-              <span className="text-[8px] sm:text-[10px] font-bold text-blue-400 dark:text-blue-500 uppercase tracking-wider">缓存命中率</span>
-              <span className="text-xs sm:text-sm font-black text-blue-700 dark:text-blue-400">{kpiData.l7Flow_cacheHitRate?.avg ?? 0}%</span>
+          <div className="lg:col-span-8 flex items-center gap-4 px-6 py-3 bg-gradient-to-r from-blue-600/5 to-indigo-600/5 dark:from-blue-600/10 dark:to-indigo-600/10 rounded-2xl border border-blue-200/20 dark:border-blue-500/10 shadow-inner overflow-x-auto">
+            <div className="flex items-center gap-3 min-w-max">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-blue-500/70 uppercase tracking-widest">命中率</span>
+                <span className="text-lg font-black text-slate-800 dark:text-blue-400 leading-none">{kpiData.cache_hit_rate ?? 0}%</span>
+              </div>
+              <div className="h-8 w-px bg-slate-300/30 dark:bg-slate-600/30"></div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-indigo-500/70 uppercase tracking-widest">总请求</span>
+                <span className="text-lg font-black text-slate-800 dark:text-indigo-400 leading-none">{formatCount(kpiData.l7Flow_request?.sum)}</span>
+              </div>
+              <div className="h-8 w-px bg-slate-300/30 dark:bg-slate-600/30"></div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-500/70 uppercase tracking-widest">更新于</span>
+                <span className="text-lg font-black text-slate-800 dark:text-slate-200 leading-none">{lastUpdated ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
+              </div>
             </div>
-            <div className="h-6 sm:h-8 w-px bg-blue-200/50 dark:bg-blue-800/50"></div>
-            <div className="flex flex-col items-center sm:items-start">
-              <span className="text-[8px] sm:text-[10px] font-bold text-blue-400 dark:text-blue-500 uppercase tracking-wider">总请求数</span>
-              <span className="text-xs sm:text-sm font-black text-blue-700 dark:text-blue-400">{formatCount(kpiData.l7Flow_request?.sum)}</span>
+            
+            <div className="ml-auto hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              实时同步中
             </div>
-            {lastUpdated && (
-              <>
-                <div className="hidden xs:block h-6 sm:h-8 w-px bg-blue-200/50 dark:bg-blue-800/50"></div>
-                <div className="hidden xs:flex flex-col items-center sm:items-start">
-                  <span className="text-[8px] sm:text-[10px] font-bold text-blue-400 dark:text-blue-500 uppercase tracking-wider">更新于</span>
-                  <span className="text-xs sm:text-sm font-black text-blue-700 dark:text-blue-400">{lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-              </>
-            )}
           </div>
         </div>
 
         {/* Traffic Section */}
-        <section className="space-y-4 sm:space-y-6">
+        <section className="space-y-4 sm:space-y-6 animate-fade-in-up">
           <div className="flex items-center justify-between">
             <h2 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 sm:gap-3">
               <span className="h-6 sm:h-8 w-1 sm:w-1.5 rounded-full bg-blue-500"></span>
@@ -510,7 +555,7 @@ export default function Dashboard() {
               value={formatBytes(kpiData.l7Flow_inFlux?.sum)} 
               description="客户端至边缘节点" 
               loading={loading}
-              icon={ArrowDownLeft}
+              icon={ArrowUpRight}
               color="amber"
             />
             <KPICard 
@@ -518,7 +563,7 @@ export default function Dashboard() {
               value={formatBytes(kpiData.l7Flow_outFlux?.sum)} 
               description="边缘节点至客户端" 
               loading={loading}
-              icon={ArrowUpRight}
+              icon={ArrowDownLeft}
               color="emerald"
             />
             <KPICard 
@@ -548,13 +593,13 @@ export default function Dashboard() {
         </section>
 
         {/* Origin & Performance */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 animate-fade-in-up [animation-delay:150ms]">
           <section className="lg:col-span-2 space-y-4 sm:space-y-6">
             <h2 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 sm:gap-3">
               <span className="h-6 sm:h-8 w-1 sm:w-1.5 rounded-full bg-indigo-500"></span>
               回源分析
             </h2>
-            <div className="grid grid-cols-1 xs:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
               <KPICard 
                 title="回源流量" 
                 value={formatBytes(kpiData.l7Flow_inFlux_hy?.sum)} 
@@ -571,14 +616,6 @@ export default function Dashboard() {
                 icon={Zap}
                 color="rose"
               />
-              <KPICard 
-                title="回源请求" 
-                value={formatCount(kpiData.l7Flow_request_hy?.sum)} 
-                description="回源请求总数" 
-                loading={loading}
-                icon={RefreshCw}
-                color="orange"
-              />
             </div>
             <ChartContainer title="回源趋势" loading={loading} icon={RefreshCw} height="280px">
               <ReactECharts 
@@ -593,96 +630,90 @@ export default function Dashboard() {
               <span className="h-6 sm:h-8 w-1 sm:w-1.5 rounded-full bg-cyan-500"></span>
               性能分析
             </h2>
-            <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4">
-              <KPICard 
-                title="平均响应时间" 
-                value={`${(kpiData.l7Flow_avgResponseTime?.avg ?? 0).toFixed(2)} ms`} 
-                description="全链路平均延迟" 
-                loading={loading}
-                icon={Clock}
-                color="cyan"
-              />
-              <KPICard 
-                title="首字节时间" 
-                value={`${(kpiData.l7Flow_avgFirstByteResponseTime?.avg ?? 0).toFixed(2)} ms`} 
-                description="平均首字节响应时间" 
-                loading={loading}
-                icon={Zap}
-                color="orange"
-              />
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4">
+                <KPICard 
+                  title="平均响应时间" 
+                  value={`${(kpiData.l7Flow_avgResponseTime?.avg ?? 0).toFixed(2)} ms`} 
+                  description="全链路平均延迟" 
+                  loading={loading}
+                  icon={Clock}
+                  color="cyan"
+                />
+                <KPICard 
+                  title="首字节时间" 
+                  value={`${(kpiData.l7Flow_avgFirstByteResponseTime?.avg ?? 0).toFixed(2)} ms`} 
+                  description="平均首字节响应时间" 
+                  loading={loading}
+                  icon={Zap}
+                  color="orange"
+                />
+              </div>
+              <ChartContainer title="延迟趋势" loading={loading} icon={Activity} height="220px">
+                <ReactECharts 
+                  option={getTimeChartOption('延迟趋势', metricsConfig.performance, chartData.performance, 'ms')} 
+                  style={{ height: '100%' }}
+                />
+              </ChartContainer>
             </div>
-            <ChartContainer title="延迟趋势" loading={loading} icon={Activity} height="220px">
-              <ReactECharts 
-                option={getTimeChartOption('延迟趋势', metricsConfig.performance, chartData.performance, 'ms')} 
-                style={{ height: '100%' }}
-              />
-            </ChartContainer>
-          </section>
-        </div>
-
-        {/* Security & Functions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          <section className="space-y-4 sm:space-y-6">
-            <h2 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 sm:gap-3">
-              <span className="h-6 sm:h-8 w-1 sm:w-1.5 rounded-full bg-rose-500"></span>
-              安全事件
-            </h2>
-            <div className="grid grid-cols-1 xs:grid-cols-3 gap-3 sm:gap-4">
-              <KPICard title="精确防护" value={formatCount(kpiData.ccAcl_interceptNum?.sum)} description="ACL 拦截数" loading={loading} icon={Shield} color="rose" />
-              <KPICard title="托管规则" value={formatCount(kpiData.ccManage_interceptNum?.sum)} description="WAF 拦截数" loading={loading} icon={Lock} color="amber" />
-              <KPICard title="速率限制" value={formatCount(kpiData.ccRate_interceptNum?.sum)} description="速率限制拦截" loading={loading} icon={Activity} color="blue" />
-            </div>
-            <ChartContainer title="安全趋势" loading={loading} icon={Shield} height="280px">
-              <ReactECharts 
-                option={getTimeChartOption('安全趋势', metricsConfig.security, chartData.security, 'count')} 
-                style={{ height: '100%' }}
-              />
-            </ChartContainer>
-          </section>
-
-          <section className="space-y-4 sm:space-y-6">
-            <h2 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 sm:gap-3">
-              <span className="h-6 sm:h-8 w-1 sm:w-1.5 rounded-full bg-orange-500"></span>
-              边缘函数
-            </h2>
-            <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
-              <KPICard title="执行次数" value={formatCount(kpiData.function_requestCount?.sum)} description="函数执行总次数" loading={loading} icon={Cpu} color="orange" />
-              <KPICard title="CPU 时间" value={`${(kpiData.function_cpuCostTime?.sum ?? 0).toFixed(2)} ms`} description="函数消耗的 CPU 总时间" loading={loading} icon={Zap} color="purple" />
-            </div>
-            <ChartContainer title="函数趋势" loading={loading} icon={Cpu} height="280px">
-              <ReactECharts 
-                option={getTimeChartOption('函数趋势', metricsConfig.edgeFunctions, chartData.edgeFunctions, 'count')} 
-                style={{ height: '100%' }}
-              />
-            </ChartContainer>
           </section>
         </div>
 
         {/* Top Analysis */}
-        <section className="space-y-4 sm:space-y-6">
+        <section className="space-y-6 animate-fade-in-up [animation-delay:300ms]">
           <h2 className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 sm:gap-3">
             <span className="h-6 sm:h-8 w-1 sm:w-1.5 rounded-full bg-purple-500"></span>
-            排行榜
+            多维分析
           </h2>
-          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <ChartContainer title="热门域名" loading={loading} icon={Globe} height="320px">
-              <ReactECharts option={getBarChartOption('热门域名', chartData.top_l7Flow_outFlux_domain, 'l7Flow_outFlux_domain')} style={{ height: '100%' }} />
-            </ChartContainer>
-            <ChartContainer title="热门国家/地区" loading={loading} icon={Globe} height="320px">
-              <ReactECharts option={getBarChartOption('热门国家/地区', chartData.top_l7Flow_outFlux_country, 'l7Flow_outFlux_country')} style={{ height: '100%' }} />
-            </ChartContainer>
-            <ChartContainer title="状态码分布" loading={loading} icon={Activity} height="320px">
-              <ReactECharts option={getBarChartOption('状态码分布', chartData.top_l7Flow_outFlux_statusCode, 'l7Flow_outFlux_statusCode')} style={{ height: '100%' }} />
-            </ChartContainer>
-            <ChartContainer title="热门 URL" loading={loading} icon={MousePointer2} height="320px">
-              <ReactECharts option={getBarChartOption('热门 URL', chartData.top_l7Flow_outFlux_url, 'l7Flow_outFlux_url')} style={{ height: '100%' }} />
-            </ChartContainer>
-            <ChartContainer title="资源类型分布" loading={loading} icon={Layers} height="320px">
-              <ReactECharts option={getBarChartOption('资源类型分布', chartData.top_l7Flow_outFlux_resourceType, 'l7Flow_outFlux_resourceType')} style={{ height: '100%' }} />
-            </ChartContainer>
-            <ChartContainer title="国内省份分布" loading={loading} icon={Globe} height="320px">
-              <ReactECharts option={getBarChartOption('国内省份分布', chartData.top_l7Flow_outFlux_province, 'l7Flow_outFlux_province')} style={{ height: '100%' }} />
-            </ChartContainer>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* Resources Group */}
+            <div className="space-y-6">
+               <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">资源分布</h3>
+               <ChartContainer title="热门域名" loading={loading} icon={Globe} height="280px">
+                  <ReactECharts option={getBarChartOption('热门域名', chartData.top_l7Flow_outFlux_domain, 'l7Flow_outFlux_domain')} style={{ height: '100%' }} />
+               </ChartContainer>
+               <ChartContainer title="资源类型" loading={loading} icon={Layers} height="280px">
+                  <ReactECharts option={getBarChartOption('资源类型', chartData.top_l7Flow_outFlux_resourceType, 'l7Flow_outFlux_resourceType')} style={{ height: '100%' }} />
+               </ChartContainer>
+               <ChartContainer title="状态码" loading={loading} icon={Activity} height="280px">
+                  <ReactECharts option={getBarChartOption('状态码', chartData.top_l7Flow_outFlux_statusCode, 'l7Flow_outFlux_statusCode')} style={{ height: '100%' }} />
+               </ChartContainer>
+               <ChartContainer title="热门 URL" loading={loading} icon={MousePointer2} height="280px">
+                  <ReactECharts option={getBarChartOption('热门 URL', chartData.top_l7Flow_outFlux_url, 'l7Flow_outFlux_url')} style={{ height: '100%' }} />
+               </ChartContainer>
+            </div>
+
+            {/* Geography Group */}
+            <div className="space-y-6">
+               <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">地域分布</h3>
+               <ChartContainer title="国家/地区" loading={loading} icon={Globe} height="340px">
+                  <ReactECharts option={getBarChartOption('国家/地区', chartData.top_l7Flow_outFlux_country, 'l7Flow_outFlux_country')} style={{ height: '100%' }} />
+               </ChartContainer>
+               <ChartContainer title="国内省份" loading={loading} icon={Globe} height="340px">
+                  <ReactECharts option={getBarChartOption('国内省份', chartData.top_l7Flow_outFlux_province, 'l7Flow_outFlux_province')} style={{ height: '100%' }} />
+               </ChartContainer>
+               <ChartContainer title="客户端 IP" loading={loading} icon={Shield} height="340px">
+                  <ReactECharts option={getBarChartOption('客户端 IP', chartData.top_l7Flow_outFlux_sip, 'l7Flow_outFlux_sip')} style={{ height: '100%' }} />
+               </ChartContainer>
+            </div>
+
+            {/* Client Group */}
+            <div className="space-y-6">
+               <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">客户端环境</h3>
+               <ChartContainer title="浏览器" loading={loading} icon={Globe} height="280px">
+                  <ReactECharts option={getBarChartOption('浏览器', chartData.top_l7Flow_outFlux_ua_browser, 'l7Flow_outFlux_ua_browser')} style={{ height: '100%' }} />
+               </ChartContainer>
+               <ChartContainer title="操作系统" loading={loading} icon={Cpu} height="280px">
+                  <ReactECharts option={getBarChartOption('操作系统', chartData.top_l7Flow_outFlux_ua_os, 'l7Flow_outFlux_ua_os')} style={{ height: '100%' }} />
+               </ChartContainer>
+               <ChartContainer title="设备类型" loading={loading} icon={Layers} height="280px">
+                  <ReactECharts option={getBarChartOption('设备类型', chartData.top_l7Flow_outFlux_ua_device, 'l7Flow_outFlux_ua_device')} style={{ height: '100%' }} />
+               </ChartContainer>
+               <ChartContainer title="Referer 来源" loading={loading} icon={MousePointer2} height="280px">
+                  <ReactECharts option={getBarChartOption('Referer 来源', chartData.top_l7Flow_outFlux_referers, 'l7Flow_outFlux_referers')} style={{ height: '100%' }} />
+               </ChartContainer>
+            </div>
           </div>
         </section>
       </main>

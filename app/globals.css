@@ -43,6 +43,21 @@
   100% { background-color: #f1f5f9; }
 }
 
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
 .skeleton {
   animation: skeleton-loading 1.5s ease-in-out infinite;
   border-radius: 0.5rem;

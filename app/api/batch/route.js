@@ -5,31 +5,49 @@ import {
     ORIGIN_PULL_METRICS, 
     TOP_ANALYSIS_METRICS, 
     SECURITY_METRICS, 
-    FUNCTION_METRICS 
+    FUNCTION_METRICS,
+    PAGES_METRICS
 } from '@/lib/teo-client';
 
 function processTimeData(data, metric) {
-    const dataList = data?.Data || data?.TimingDataRecords || [];
-    if (dataList.length === 0) return { timeData: [], valueData: [], sum: 0, max: 0, avg: 0 };
+    // Some APIs return the data wrapped in a Response object
+    const actualData = data?.Response || data;
+    
+    // Support multiple possible data paths
+    const dataList = actualData?.Data || actualData?.TimingDataRecords || actualData?.Records || [];
+    if (dataList.length === 0) {
+        // Try top-level Value/TypeValue if Data/Records missing
+        const topLevelValue = actualData?.TypeValue || actualData?.Value;
+        if (!topLevelValue) return { timeData: [], valueData: [], sum: 0, max: 0, avg: 0 };
+        return extractFromTypeValue(topLevelValue, metric);
+    }
 
     let typeValue;
-    if (dataList[0]?.TypeValue) {
-        typeValue = dataList[0].TypeValue.find(item => item.MetricName === metric || item.Metric === metric);
-    } else if (dataList[0]?.Value) {
-        typeValue = dataList[0].Value.find(item => item.MetricName === metric || item.Metric === metric);
+    // Iterate through dataList to find the matching metric
+    for (const item of dataList) {
+        const values = item.TypeValue || item.Value || [];
+        typeValue = values.find(v => v.MetricName === metric || v.Metric === metric);
+        if (typeValue) break;
     }
 
-    if (!typeValue) {
-        typeValue = dataList[0]?.TypeValue?.[0] || dataList[0]?.Value?.[0];
+    // Fallback if not found by name
+    if (!typeValue && dataList[0]) {
+        typeValue = dataList[0].TypeValue?.[0] || dataList[0].Value?.[0];
     }
 
-    const details = typeValue?.Detail || [];
+    return extractFromTypeValue(typeValue, metric);
+}
+
+function extractFromTypeValue(typeValue, metric) {
+    if (!typeValue) return { timeData: [], valueData: [], sum: 0, max: 0, avg: 0 };
+    
+    const details = typeValue.Detail || typeValue.Details || [];
     return {
-        timeData: details.map(d => d.Timestamp),
+        timeData: details.map(d => d.Timestamp || d.Time),
         valueData: details.map(d => d.Value),
-        sum: typeValue?.Sum || 0,
-        max: typeValue?.Max || 0,
-        avg: typeValue?.Avg || 0
+        sum: typeValue.Sum ?? 0,
+        max: typeValue.Max ?? 0,
+        avg: typeValue.Avg ?? 0
     };
 }
 
@@ -45,26 +63,44 @@ export async function POST(request) {
         const client = getTeoClient();
         if (!client) return NextResponse.json({ error: "Missing credentials" }, { status: 500 });
 
-        const zoneIds = zoneId && zoneId !== '*' ? [zoneId] : [];
+        let effectiveZoneIds = [];
+        if (zoneId && zoneId !== '*') {
+            effectiveZoneIds = [zoneId];
+        } else {
+            try {
+                const zonesData = await client.DescribeZones({});
+                const zonesList = zonesData?.Response?.Zones || zonesData?.Zones || [];
+                effectiveZoneIds = zonesList.map(z => z.ZoneId);
+            } catch (err) {
+                console.error("Failed to fetch zones for batch request:", err);
+            }
+        }
 
         const results = await Promise.all(requests.map(async (r) => {
-            const { type, metric, startTime, endTime, interval } = r;
+            const { type, metric, startTime, endTime, interval, ...extraParams } = r;
             const params = {
                 StartTime: startTime,
                 EndTime: endTime,
                 MetricNames: [metric],
-                Interval: interval && interval !== 'auto' ? interval : undefined
+                Interval: interval && interval !== 'auto' ? interval : undefined,
+                ...extraParams
             };
-            if (zoneIds.length > 0) {
-                params.ZoneIds = zoneIds;
+            
+            // Add ZoneIds for all APIs that support/require it
+            if (effectiveZoneIds.length > 0) {
+                params.ZoneIds = effectiveZoneIds;
             }
 
             try {
                 let data;
                 if (type === 'Timing') {
                     if (ORIGIN_PULL_METRICS.includes(metric)) {
-                        // Origin Pull API
-                        data = await client.DescribeTimingL7OriginPullData(params);
+                        // DescribeTimingL7OriginPullData requires Area typically
+                        try {
+                            data = await client.DescribeTimingL7OriginPullData(params);
+                        } catch (e) {
+                            data = await client.DescribeTimingL7OriginPullData({ ...params, Area: 'mainland' });
+                        }
                     } else if (FUNCTION_METRICS.includes(metric)) {
                         const commonClient = getCommonClient();
                         const { MetricNames, ...functionParams } = params;
@@ -72,43 +108,82 @@ export async function POST(request) {
                             ...functionParams,
                             MetricNames: [metric]
                         });
+                    } else if (PAGES_METRICS.includes(metric)) {
+                        const { MetricNames, ...pagesParams } = params;
+                        let command = "";
+                        if (metric === 'pages_build_count') command = "getBuildingCounts";
+                        else if (metric === 'pages_cloud_function_requests') command = "getFunctionRequests";
+                        else if (metric === 'pages_cloud_function_monthly_stats') command = "getMonthlyStats";
+
+                        // Pages APIs usually need exactly one ZoneId or specific params
+                        // For summary dashboard, we use the first selected zone or the first in list
+                        data = await client.DescribePagesResources({
+                            ZoneId: effectiveZoneIds[0] || "",
+                            Command: command
+                        });
+                        
+                        const actualData = data?.Response || data;
+                        if (actualData?.Result) {
+                            try {
+                                const parsed = JSON.parse(actualData.Result);
+                                return { metric, type: 'Pages', ...parsed };
+                            } catch (e) {
+                                return { metric, type: 'Pages', rawResult: actualData.Result };
+                            }
+                        }
+                        return { metric, ...actualData };
                     } else {
                         data = await client.DescribeTimingL7AnalysisData({
-                            ...params,
-                            Filters: []
+                            Filters: [],
+                            ...params
                         });
                     }
                     return { metric, ...processTimeData(data, metric) };
                 } else if (type === 'Top') {
                     const { MetricNames, ...topParams } = params;
                     data = await client.DescribeTopL7AnalysisData({
+                        Limit: 10,
                         ...topParams,
                         MetricName: metric,
-                        Limit: 10
                     });
                     return { metric, ...processTopData(data) };
                 } else if (type === 'Security') {
                     const { MetricNames, ...securityParams } = params;
                     const requestParams = {
-                        ...securityParams,
                         MetricNames: [metric],
-                        Filters: []
+                        ...securityParams,
+                        ZoneIds: effectiveZoneIds
                     };
                     
-                    if (!requestParams.ZoneIds || requestParams.ZoneIds.length === 0) {
-                        delete requestParams.ZoneIds;
+                    // For security, limit interval and add Filters if needed
+                    if (requestParams.Interval === 'day') {
+                        requestParams.Interval = 'hour';
+                    }
+                    if (!requestParams.Interval || requestParams.Interval === 'auto') {
+                        requestParams.Interval = 'min';
                     }
 
-                    try {
-                        data = await client.DescribeTimingL7AnalysisData(requestParams);
-                    } catch (apiErr) {
+                    const tryModes = [
+                        () => client.DescribeTimingL7AnalysisData({ ...requestParams }), // Try without Filters
+                        () => client.DescribeTimingL7AnalysisData({ ...requestParams, Filters: [] }), // Try with empty Filters
+                        () => client.DescribeTimingL7AnalysisData({ ...requestParams, Area: 'mainland' }),
+                        () => client.DescribeTimingL7AnalysisData({ ...requestParams, Area: 'overseas' })
+                    ];
+
+                    data = null;
+                    let lastErr = null;
+                    for (const tryFn of tryModes) {
                         try {
-                            // 尝试带上 Area
-                            data = await client.DescribeTimingL7AnalysisData({ ...requestParams, Area: 'mainland' });
-                        } catch (err2) {
-                            console.error(`Security API Error for ${metric}:`, apiErr.message);
-                            return { metric, data: [], sum: 0, max: 0, avg: 0 };
+                            data = await tryFn();
+                            if (data) break;
+                        } catch (err) {
+                            lastErr = err;
                         }
+                    }
+
+                    if (!data) {
+                        console.error(`Security API Error for ${metric}: ${lastErr?.message || 'Unknown error'}`);
+                        return { metric, data: [], sum: 0, max: 0, avg: 0 };
                     }
                     return { metric, ...processTimeData(data, metric) };
                 }
@@ -135,7 +210,21 @@ export async function POST(request) {
 
         results.forEach(res => {
             if (!res || res.error) return;
-            const { metric, timeData, valueData, sum, max, avg, data } = res;
+            const { metric, timeData, valueData, sum, max, avg, data: topData, type: resType, ...parsed } = res;
+
+            // Handle Pages Stats
+            if (resType === 'Pages') {
+                kpis[metric] = parsed;
+                
+                // If it contains time-series data (for Pages Cloud Functions)
+                if (parsed.Timestamps && parsed.Values) {
+                    charts[`top_${metric}`] = { 
+                        timeData: parsed.Timestamps,
+                        valueData: parsed.Values
+                    };
+                }
+                return;
+            }
 
             // Store KPI
             kpis[metric] = { sum, max, avg };
@@ -164,8 +253,8 @@ export async function POST(request) {
                     charts.performance.timeData = timeData;
                     charts.performance[metric] = { valueData };
                 }
-            } else if (data) {
-                charts[`top_${metric}`] = { data };
+            } else if (topData) {
+                charts[`top_${metric}`] = { data: topData };
             }
         });
 
@@ -174,6 +263,8 @@ export async function POST(request) {
             const edgeOut = kpis.l7Flow_outFlux.sum;
             const originIn = kpis.l7Flow_inFlux_hy.sum;
             kpis.cache_hit_rate = edgeOut > 0 ? ((1 - originIn / edgeOut) * 100).toFixed(2) : 0;
+        } else {
+            kpis.cache_hit_rate = 0;
         }
 
         return NextResponse.json({ kpis, charts });
