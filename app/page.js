@@ -332,48 +332,57 @@ export default function Dashboard() {
     const isCount = metricName.includes('request');
     const { unit, divisor } = isCount ? getBestCountUnit(maxValue) : getBestUnit(maxValue, 'bytes');
     const textColor = isDark ? '#94a3b8' : '#64748b';
-    const tooltipBg = isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.95)';
-    const tooltipBorder = isDark ? '#334155' : '#e2e8f0';
-    const tooltipText = isDark ? '#f1f5f9' : '#1e293b';
+    const tooltipText = isDark ? '#f8fafc' : '#0f172a';
+    const axisLineColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
 
     return {
       backgroundColor: 'transparent',
+      animationDuration: 1000,
+      animationEasing: 'cubicOut',
+      grid: { left: '2%', right: '8%', bottom: '2%', top: '2%', containLabel: true },
       tooltip: {
         trigger: 'axis',
-        backgroundColor: tooltipBg,
-        borderColor: tooltipBorder,
-        borderWidth: 0,
+        axisPointer: { type: 'shadow', shadowStyle: { color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)' } },
+        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.85)',
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+        borderWidth: 1,
+        textStyle: { color: isDark ? '#e2e8f0' : '#334155', fontSize: 12, fontFamily: 'Inter, sans-serif' },
         padding: [12, 16],
-        extraCssText: 'box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); border-radius: 12px; backdrop-filter: blur(10px);',
+        borderRadius: 12,
+        extraCssText: 'box-shadow: 0 8px 20px -4px rgb(0 0 0 / 0.15); backdrop-filter: blur(12px);',
         formatter: (params) => {
           const p = params[0];
           const val = p.value;
           const formatted = isCount ? formatCount(val) : formatBytes(val);
-          return `<div style="font-weight: 600; font-size: 13px; margin-bottom: 6px; color: ${tooltipText}">${p.name}</div>
+          // Show full name tooltips for truncated labels
+          return `<div style="font-weight: 600; font-size: 13px; margin-bottom: 6px; color: ${tooltipText}; max-width: 240px; word-wrap: break-word;">${p.name}</div>
                   <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
-                    <span style="font-size: 12px; color: ${isDark ? '#94a3b8' : '#64748b'}">数值</span>
-                    <span style="font-family: monospace; font-weight: 700; color: ${p.color?.colorStops ? p.color.colorStops[0].color : p.color}">${formatted}</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="width: 6px; height: 6px; border-radius: 2px; background-color: ${p.color?.colorStops ? p.color.colorStops[0].color : p.color}"></span>
+                        <span style="font-size: 12px; color: ${isDark ? '#cbd5e1' : '#475569'}">数值</span>
+                    </div>
+                    <span style="font-family: inherit; font-weight: 700; font-feature-settings: 'tnum'; color: ${p.color?.colorStops ? p.color.colorStops[0].color : p.color};">${formatted}</span>
                   </div>`;
         }
       },
-      grid: { left: '0%', right: '12%', bottom: '2%', top: '2%', containLabel: true },
       xAxis: {
         type: 'value',
-        splitLine: { show: false },
+        splitLine: { show: true, lineStyle: { color: axisLineColor, type: 'dashed' } },
         axisLabel: { show: false },
         axisLine: { show: false },
         axisTick: { show: false }
       },
       yAxis: {
         type: 'category',
+        inverse: true, // Show top item at top
         axisLine: { show: false },
         axisTick: { show: false },
         axisLabel: { 
-          color: isDark ? '#cbd5e1' : '#475569', 
-          fontSize: 12,
+          color: textColor, 
+          fontSize: 12, 
           fontWeight: 500,
           margin: 16,
-          width: 110,
+          width: 140, // More space for labels
           overflow: 'truncate',
           ellipsis: '...'
         },
@@ -381,49 +390,49 @@ export default function Dashboard() {
           if (metricName.includes('province')) return provinceMap[i.Key] || i.Key;
           if (metricName.includes('country')) return countryMap[i.Key] || i.Key;
           return i.Key;
-        }).reverse()
+        })
       },
       series: [{
         type: 'bar',
-        barWidth: '40%',
+        barWidth: 16, // Fixed cleaner width
         showBackground: true,
         backgroundStyle: {
-          color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-          borderRadius: [0, 6, 6, 0]
+          color: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+          borderRadius: 4
         },
-        data: items.map(i => i.Value).reverse(),
+        data: items.map(i => i.Value),
         itemStyle: {
           color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
             { offset: 0, color: metricColors[metricName] || '#3b82f6' },
             { offset: 1, color: `${metricColors[metricName]}80` || '#3b82f680' }
           ]),
-          borderRadius: [0, 6, 6, 0]
+          borderRadius: [0, 4, 4, 0]
         },
         label: {
           show: true,
           position: 'right',
           color: textColor,
           fontSize: 11,
-          fontWeight: 600,
-          formatter: (p) => isCount ? formatCount(p.value) : formatBytes(p.value)
+          fontFamily: 'monospace',
+          fontWeight: 500,
+          formatter: (p) => isCount ? formatCount(p.value) : formatBytes(p.value),
+          valueAnimation: true
         }
       }]
     };
   };
 
-  if (!mounted) return null;
-
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-[#0a0c10]' : 'bg-[#f4f7fa]'} transition-colors duration-500`}>
+    <div className={`min-h-screen ${isDark ? 'bg-[#0a0f18]' : 'bg-[#f8fafc]'} transition-colors duration-500 selection:bg-blue-500/30`}>
       {/* Refactored Header */}
-      <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/70 dark:bg-slate-950/70 border-b border-slate-200/50 dark:border-slate-800/50 transition-all duration-300">
+      <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/50 dark:border-slate-800/50 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 ring-1 ring-white/20">
               <Activity size={24} />
             </div>
             <div>
-              <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">
+              <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-50 leading-none">
                 EdgeOne <span className="text-blue-600 dark:text-blue-400">Monitor</span>
               </h1>
               <div className="flex items-center gap-1.5 mt-1">
@@ -435,7 +444,7 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-3">
             {/* Zone Selector */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg border border-slate-200/30 dark:border-slate-700/30">
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-lg border border-slate-200/30 dark:border-slate-700/30 focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
               <Globe size={14} className="text-slate-400" />
               <select 
                 className="bg-transparent border-none text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-0 p-0 pr-6 cursor-pointer"
@@ -452,7 +461,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 p-1 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl border border-slate-200/30 dark:border-slate-700/30">
               <button 
                 onClick={toggleDarkMode}
-                className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200"
+                className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400 shadow-sm transition-all duration-200"
               >
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </button>
@@ -670,16 +679,16 @@ export default function Dashboard() {
             {/* Resources Group */}
             <div className="space-y-6">
                <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">资源分布</h3>
-               <ChartContainer title="热门域名" loading={loading} icon={Globe} height="280px">
+               <ChartContainer title="热门域名" loading={loading} icon={Globe} height="360px">
                   <ReactECharts option={getBarChartOption('热门域名', chartData.top_l7Flow_outFlux_domain, 'l7Flow_outFlux_domain')} style={{ height: '100%' }} />
                </ChartContainer>
-               <ChartContainer title="资源类型" loading={loading} icon={Layers} height="280px">
+               <ChartContainer title="资源类型" loading={loading} icon={Layers} height="360px">
                   <ReactECharts option={getBarChartOption('资源类型', chartData.top_l7Flow_outFlux_resourceType, 'l7Flow_outFlux_resourceType')} style={{ height: '100%' }} />
                </ChartContainer>
-               <ChartContainer title="状态码" loading={loading} icon={Activity} height="280px">
+               <ChartContainer title="状态码" loading={loading} icon={Activity} height="360px">
                   <ReactECharts option={getBarChartOption('状态码', chartData.top_l7Flow_outFlux_statusCode, 'l7Flow_outFlux_statusCode')} style={{ height: '100%' }} />
                </ChartContainer>
-               <ChartContainer title="热门 URL" loading={loading} icon={MousePointer2} height="280px">
+               <ChartContainer title="热门 URL" loading={loading} icon={MousePointer2} height="360px">
                   <ReactECharts option={getBarChartOption('热门 URL', chartData.top_l7Flow_outFlux_url, 'l7Flow_outFlux_url')} style={{ height: '100%' }} />
                </ChartContainer>
             </div>
@@ -687,13 +696,13 @@ export default function Dashboard() {
             {/* Geography Group */}
             <div className="space-y-6">
                <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">地域分布</h3>
-               <ChartContainer title="国家/地区" loading={loading} icon={Globe} height="340px">
+               <ChartContainer title="国家/地区" loading={loading} icon={Globe} height="400px">
                   <ReactECharts option={getBarChartOption('国家/地区', chartData.top_l7Flow_outFlux_country, 'l7Flow_outFlux_country')} style={{ height: '100%' }} />
                </ChartContainer>
-               <ChartContainer title="国内省份" loading={loading} icon={Globe} height="340px">
+               <ChartContainer title="国内省份" loading={loading} icon={Globe} height="400px">
                   <ReactECharts option={getBarChartOption('国内省份', chartData.top_l7Flow_outFlux_province, 'l7Flow_outFlux_province')} style={{ height: '100%' }} />
                </ChartContainer>
-               <ChartContainer title="客户端 IP" loading={loading} icon={Shield} height="340px">
+               <ChartContainer title="客户端 IP" loading={loading} icon={Shield} height="400px">
                   <ReactECharts option={getBarChartOption('客户端 IP', chartData.top_l7Flow_outFlux_sip, 'l7Flow_outFlux_sip')} style={{ height: '100%' }} />
                </ChartContainer>
             </div>
@@ -701,16 +710,16 @@ export default function Dashboard() {
             {/* Client Group */}
             <div className="space-y-6">
                <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">客户端环境</h3>
-               <ChartContainer title="浏览器" loading={loading} icon={Globe} height="280px">
+               <ChartContainer title="浏览器" loading={loading} icon={Globe} height="360px">
                   <ReactECharts option={getBarChartOption('浏览器', chartData.top_l7Flow_outFlux_ua_browser, 'l7Flow_outFlux_ua_browser')} style={{ height: '100%' }} />
                </ChartContainer>
-               <ChartContainer title="操作系统" loading={loading} icon={Cpu} height="280px">
+               <ChartContainer title="操作系统" loading={loading} icon={Cpu} height="360px">
                   <ReactECharts option={getBarChartOption('操作系统', chartData.top_l7Flow_outFlux_ua_os, 'l7Flow_outFlux_ua_os')} style={{ height: '100%' }} />
                </ChartContainer>
-               <ChartContainer title="设备类型" loading={loading} icon={Layers} height="280px">
+               <ChartContainer title="设备类型" loading={loading} icon={Layers} height="360px">
                   <ReactECharts option={getBarChartOption('设备类型', chartData.top_l7Flow_outFlux_ua_device, 'l7Flow_outFlux_ua_device')} style={{ height: '100%' }} />
                </ChartContainer>
-               <ChartContainer title="Referer 来源" loading={loading} icon={MousePointer2} height="280px">
+               <ChartContainer title="Referer 来源" loading={loading} icon={MousePointer2} height="360px">
                   <ReactECharts option={getBarChartOption('Referer 来源', chartData.top_l7Flow_outFlux_referers, 'l7Flow_outFlux_referers')} style={{ height: '100%' }} />
                </ChartContainer>
             </div>
